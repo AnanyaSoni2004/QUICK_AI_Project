@@ -22,7 +22,7 @@ const Signup = () => {
     e.preventDefault();
     try {
       const res = await axios.post(
-        "https://quick-ai-project-1.onrender.com/api/auth/signup", // Adjust URL if using Vercel/Render or different port
+        "http://localhost:5001/api/auth/signup", // Adjust URL if using Vercel/Render or different port
         formData
       );
       alert(res.data.message || "Signup Successful!");
