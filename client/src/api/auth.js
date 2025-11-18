@@ -1,5 +1,5 @@
 export const login = async({email,password})=>{
-    const response  = await fetch("http://localhost:5001/api/auth/login",{
+    const response  = await fetch("https://quick-ai-project-1.onrender.com/api/auth/login",{
         headers:{
             "Content-type":"application/json"
         },
@@ -21,7 +21,7 @@ export const login = async({email,password})=>{
 // }
 
 export const register = async ({ username, email, password }) => {
-    const response = await fetch("http://localhost:5000/api/auth/signup", {
+    const response = await fetch("https://quick-ai-project-1.onrender.com/api/auth/signup", {
       headers: {
         "Content-type": "application/json",
       },
