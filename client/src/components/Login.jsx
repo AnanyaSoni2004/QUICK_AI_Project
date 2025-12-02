@@ -1,8 +1,6 @@
-// src/pages/Login.jsx
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { login } from "../api/auth";
-// src/pages/Login.jsx
 
 export default function Login() {
   const navigate = useNavigate();
@@ -10,39 +8,34 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+  const handleChange = (e) =>
+    setForm({ ...form, [e.target.name]: e.target.value });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setLoading(true);
+
     try {
-      const data = await login({ email: form.email, password: form.password })
-      console.log(data)
-      navigate()
+      const data = await login({
+        email: form.email,
+        password: form.password,
+      });
+
+      console.log(data);
+
+      // ✅ Save token + user from backend
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+
+      // ✅ Redirect to dashboard
+      navigate("/ai/dashboard");
+    } catch (err) {
+      console.log("error");
+      setError("Invalid email or password");
+    } finally {
+      setLoading(false);
     }
-    catch (err) {
-      console.log("error")
-    }
-    finally {
-
-    }
-    // try {
-    //   const res = await api.post("/api/auth/login", form);
-    //   const { token, user } = res.data;
-
-    //   if (!token) throw new Error("No token returned from server");
-
-    //   localStorage.setItem("token", token);
-    //   localStorage.setItem("user", JSON.stringify(user));
-
-    //   navigate("/ai/dashboard", { replace: true });
-    // } catch (err) {
-    //   console.error(err);
-    //   setError(err.response?.data?.message || err.message || "Login failed");
-    // } finally {
-    //   setLoading(false);
-    // }
   };
 
   return (
@@ -77,7 +70,10 @@ export default function Login() {
         {error && <p style={styles.error}>{error}</p>}
 
         <p style={styles.footerText}>
-          Don't have an account? <Link to="/signup" style={styles.link}>Sign up</Link>
+          Don't have an account?{" "}
+          <Link to="/signup" style={styles.link}>
+            Sign up
+          </Link>
         </p>
       </form>
     </div>
