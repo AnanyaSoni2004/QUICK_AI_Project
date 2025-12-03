@@ -139,10 +139,11 @@ import React, { useState } from "react";
 import { toast } from "react-toastify";
 import axios from "axios";
 
-axios.defaults.baseURL = import.meta.env.VITE_BASE_URL;
+const BACKEND_URL = import.meta.env.VITE_BASE_URL;
 console.log("Axios Base URL:", axios.defaults.baseURL);
 
 const GenerateImages = () => {
+
   const ImageStyle = [
     "Realistic",
     "Ghibli style",
@@ -175,7 +176,7 @@ const GenerateImages = () => {
       const prompt = `Generate an image of ${input} in the style ${selectedStyle}`;
 
       const { data } = await axios.post(
-        "/api/ai/generate-image",
+        `${BACKEND_URL}/api/ai/generate-image`,
         { prompt, publish },
         {
           headers: { Authorization: `Bearer ${token}` },
