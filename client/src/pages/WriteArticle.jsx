@@ -36,7 +36,7 @@ const WriteArticle = () => {
             const prompt = `Write an article about ${input} in ${selectedLength.text}`;
 
             const { data } = await axios.post(
-                "/api/ai/generate-article",
+                "https://quick-ai-project-1.onrender.com/api/ai/generate-article",
                 { prompt, length: selectedLength.length },
                 {
                     headers: {
