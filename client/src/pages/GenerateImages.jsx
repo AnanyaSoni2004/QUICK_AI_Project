@@ -176,7 +176,7 @@ const GenerateImages = () => {
       const prompt = `Generate an image of ${input} in the style ${selectedStyle}`;
 
       const { data } = await axios.post(
-        `${BACKEND_URL}/api/ai/generate-image`,
+        `https://quick-ai-project-1.onrender.com/api/ai/generate-image`,
         { prompt, publish },
         {
           headers: { Authorization: `Bearer ${token}` },
