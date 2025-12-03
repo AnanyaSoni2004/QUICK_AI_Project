@@ -7,6 +7,7 @@ import sql from "../config/db.js";
 import { cloudinary } from "../config/cloudinary.js";
 import fs from "fs";
 import * as pdfParse from "pdf-parse";
+import { constrainedMemory } from "process";
 
 const AI = new OpenAI({
   apiKey: process.env.GEMINI_API_KEY,
@@ -75,44 +76,37 @@ export const generateBlogTitle = async (req, res) => {
     res.json({ success: false, message: error.message });
   }
 };
-
 export const generateImage = async (req, res) => {
   try {
     const { userId } = req.auth;
     const { prompt, publish } = req.body;
-    const { plan, free_usage } = req;
 
+    // 1️⃣ Gemini image generation
     const response = await axios.post(
-      "https://api.stability.ai/v1/generation/stable-diffusion-v1-5/text-to-image",
+      `https://generativelanguage.googleapis.com/v1beta/images:generate?key=${process.env.GEMINI_API_KEY}`,
       {
-        text_prompts: [{ text: prompt }],
-        cfg_scale: 7,
-        clip_guidance_preset: "FAST_BLUE",
-        height: 512,
-        width: 512,
-        samples: 1,
-        steps: 30,
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.STABILITYAI_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        responseType: "arraybuffer",
+        model: "gemini-2.0-flash",
+        prompt: { text: prompt }
       }
     );
 
-    const base64Image = `data:image/png;base64,${Buffer.from(response.data, "binary").toString("base64")}`;
+    // 2️⃣ Extract Base64
+    const base64Image = "data:image/png;base64," + response.data.images[0].data;
 
+    // 3️⃣ Upload to Cloudinary
     const { secure_url } = await cloudinary.uploader.upload(base64Image);
 
+    // 4️⃣ Save into DB
     await sql`
-      INSERT INTO creations(user_id, prompt, content, type, publish)
-      VALUES(${userId}, ${prompt}, ${secure_url}, 'image', ${publish ?? false})
+      INSERT INTO creations (user_id, prompt, content, type, publish)
+      VALUES (${userId}, ${prompt}, ${secure_url}, 'image', ${publish ?? false})
     `;
 
+    // 5️⃣ Return to frontend
     res.json({ success: true, content: secure_url });
+
   } catch (error) {
+    console.error("Gemini Image Error:", error?.response?.data || error.message);
     const placeholder = "https://via.placeholder.com/512?text=Image+Unavailable";
     res.json({ success: false, message: error.message, content: placeholder });
   }
