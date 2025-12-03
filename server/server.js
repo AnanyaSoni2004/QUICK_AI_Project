@@ -101,7 +101,7 @@ connectDB();
 const app = express();
 
 // Middleware
-app.use();
+app.use(cors());
 
 app.use(express.json());
 
