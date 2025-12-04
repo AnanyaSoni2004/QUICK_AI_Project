@@ -1,6 +1,6 @@
 
 import express from "express";
-import { generateArticle, generateBlogTitle, generateImage, removeImageBackground, resumereview } from '../controllers/aiController.js';
+import { generateArticle, generateBlogTitle, generateImage, removeImageBackground, resumereview, getCreations, getCreationById, updateCreation, deleteCreation } from '../controllers/aiController.js';
 import auth from "../middleware/auth.js";
 import multer from "multer";
 
@@ -13,6 +13,8 @@ router.post("/generate-image", auth, generateImage);
 router.post("/remove-image-background", upload.single('image'), auth, removeImageBackground);
 
 
+
 router.post("/resume-review", upload.single('resume'), auth, resumereview);
+
 
 export default router;

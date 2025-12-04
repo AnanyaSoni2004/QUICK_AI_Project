@@ -76,41 +76,84 @@ export const generateBlogTitle = async (req, res) => {
     res.json({ success: false, message: error.message });
   }
 };
+
+// export const generateImage = async (req, res) => {
+//   try {
+//     const { userId } = req.auth;
+//     const { prompt, publish } = req.body;
+
+//     // 1️⃣ Gemini image generation
+//     const response = await axios.post(
+//       `https://generativelanguage.googleapis.com/v1beta/images:generate?key=${process.env.GEMINI_API_KEY}`,
+//       {
+//         model: "gemini-2.0-flash",
+//         prompt: { text: prompt }
+//       }
+//     );
+
+//     // 2️⃣ Extract Base64
+//     const base64Image = "data:image/png;base64," + response.data.images[0].data;
+
+//     // 3️⃣ Upload to Cloudinary
+//     const { secure_url } = await cloudinary.uploader.upload(base64Image);
+
+//     // 4️⃣ Save into DB
+//     await sql`
+//       INSERT INTO creations (user_id, prompt, content, type, publish)
+//       VALUES (${userId}, ${prompt}, ${secure_url}, 'image', ${publish ?? false})
+//     `;
+
+//     // 5️⃣ Return to frontend
+//     res.json({ success: true, content: secure_url });
+
+//   } catch (error) {
+//     console.error("Gemini Image Error:", error?.response?.data || error.message);
+//     const placeholder = "https://via.placeholder.com/512?text=Image+Unavailable";
+//     res.json({ success: false, message: error.message, content: placeholder });
+//   }
+// };
+
+
+
+
+// const AI = new OpenAI({
+//   apiKey: process.env.GEMINI_API_KEY,
+//   baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
+// });
+
 export const generateImage = async (req, res) => {
   try {
     const { userId } = req.auth;
     const { prompt, publish } = req.body;
 
-    // 1️⃣ Gemini image generation
-    const response = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/images:generate?key=${process.env.GEMINI_API_KEY}`,
-      {
-        model: "gemini-2.0-flash",
-        prompt: { text: prompt }
-      }
-    );
+    // Call Gemini Images API
+    const response = await AI.images.generate({
+      model: "gemini-image-1.0",
+      prompt: prompt,
+      size: "512x512",
+      // Optional: you can generate multiple images
+      n: 1,
+    });
 
-    // 2️⃣ Extract Base64
-    const base64Image = "data:image/png;base64," + response.data.images[0].data;
+    const base64Image = response.data[0].b64_json;
+    const imageUrl = `data:image/png;base64,${base64Image}`;
 
-    // 3️⃣ Upload to Cloudinary
-    const { secure_url } = await cloudinary.uploader.upload(base64Image);
+    // Upload to Cloudinary
+    const { secure_url } = await cloudinary.uploader.upload(imageUrl);
 
-    // 4️⃣ Save into DB
     await sql`
-      INSERT INTO creations (user_id, prompt, content, type, publish)
-      VALUES (${userId}, ${prompt}, ${secure_url}, 'image', ${publish ?? false})
+      INSERT INTO creations(user_id, prompt, content, type, publish)
+      VALUES(${userId}, ${prompt}, ${secure_url}, 'image', ${publish ?? false})
     `;
 
-    // 5️⃣ Return to frontend
     res.json({ success: true, content: secure_url });
-
   } catch (error) {
-    console.error("Gemini Image Error:", error?.response?.data || error.message);
+    console.error("Gemini Image Error:", error.message);
     const placeholder = "https://via.placeholder.com/512?text=Image+Unavailable";
     res.json({ success: false, message: error.message, content: placeholder });
   }
 };
+
 
 // export const removeImageBackground = async (req, res) => {
 //   try {
@@ -480,3 +523,126 @@ ${pdfData.text}
 //     });
 //   }
 // };
+
+// ===================== CRUD Operations for Creations =====================
+
+// GET all creations for a user
+export const getCreations = async (req, res) => {
+  try {
+    const { userId } = req.auth;
+    const { type } = req.query; // Optional filter by type (article, image, etc.)
+
+    let creations;
+    if (type) {
+      creations = await sql`
+        SELECT * FROM creations 
+        WHERE user_id = ${userId} AND type = ${type}
+        ORDER BY created_at DESC
+      `;
+    } else {
+      creations = await sql`
+        SELECT * FROM creations 
+        WHERE user_id = ${userId}
+        ORDER BY created_at DESC
+      `;
+    }
+
+    res.json({ success: true, creations });
+  } catch (error) {
+    console.error("Error fetching creations:", error.message);
+    res.json({ success: false, message: error.message });
+  }
+};
+
+// GET a single creation by ID
+export const getCreationById = async (req, res) => {
+  try {
+    const { userId } = req.auth;
+    const { id } = req.params;
+
+    const creation = await sql`
+      SELECT * FROM creations 
+      WHERE id = ${id} AND user_id = ${userId}
+    `;
+
+    if (creation.length === 0) {
+      return res.json({ success: false, message: "Creation not found" });
+    }
+
+    res.json({ success: true, creation: creation[0] });
+  } catch (error) {
+    console.error("Error fetching creation:", error.message);
+    res.json({ success: false, message: error.message });
+  }
+};
+
+// UPDATE a creation
+export const updateCreation = async (req, res) => {
+  try {
+    const { userId } = req.auth;
+    const { id } = req.params;
+    const { content, prompt, publish } = req.body;
+
+    // Check if creation exists and belongs to user
+    const existing = await sql`
+      SELECT * FROM creations 
+      WHERE id = ${id} AND user_id = ${userId}
+    `;
+
+    if (existing.length === 0) {
+      return res.json({ success: false, message: "Creation not found or unauthorized" });
+    }
+
+    // Build update object with only provided fields
+    const updateFields = {};
+    if (content !== undefined) updateFields.content = content;
+    if (prompt !== undefined) updateFields.prompt = prompt;
+    if (publish !== undefined) updateFields.publish = publish;
+
+    if (Object.keys(updateFields).length === 0) {
+      return res.json({ success: false, message: "No fields to update" });
+    }
+
+    // Execute update
+    const updated = await sql`
+      UPDATE creations 
+      SET ${sql(updateFields)}
+      WHERE id = ${id} AND user_id = ${userId}
+      RETURNING *
+    `;
+
+    res.json({ success: true, creation: updated[0], message: "Creation updated successfully" });
+  } catch (error) {
+    console.error("Error updating creation:", error.message);
+    res.json({ success: false, message: error.message });
+  }
+};
+
+// DELETE a creation
+export const deleteCreation = async (req, res) => {
+  try {
+    const { userId } = req.auth;
+    const { id } = req.params;
+
+    // Check if creation exists and belongs to user
+    const existing = await sql`
+      SELECT * FROM creations 
+      WHERE id = ${id} AND user_id = ${userId}
+    `;
+
+    if (existing.length === 0) {
+      return res.json({ success: false, message: "Creation not found or unauthorized" });
+    }
+
+    // Delete from database
+    await sql`
+      DELETE FROM creations 
+      WHERE id = ${id} AND user_id = ${userId}
+    `;
+
+    res.json({ success: true, message: "Creation deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting creation:", error.message);
+    res.json({ success: false, message: error.message });
+  }
+};

@@ -104,7 +104,9 @@ const app = express();
 app.use(cors());
 
 app.use(express.json());
+import creationsRoutes from "./routes/creationsRoutes.js";
 
+app.use("/api/creations", creationsRoutes);
 // Test Route
 app.get("/", (req, res) => {
   res.send("✅ API is running...");
